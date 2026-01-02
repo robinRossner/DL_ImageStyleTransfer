@@ -119,7 +119,7 @@ def neural_style_transfer_lbfgs(
         style_targets = {l: gram_matrix(s_feats[l]) for l in vgg.style_layers}
 
     # Gatys-style init: white noise image
-    target = content.clone().todevice(device).requires_grad_(True)
+    target = content.clone().requires_grad_(True)
 
     optimizer = optim.LBFGS([target], max_iter=1, history_size=50, line_search_fn="strong_wolfe")
 
