@@ -89,12 +89,15 @@ def run_and_save(content_dir, style_dir, vgg, steps, alpha, beta, lr=0.001, name
 
     with torch.no_grad():
         style_features, _ = vgg(style_img)
-        _, content_feature = vgg(content_img)
+        _, content_features = vgg(content_img)
 
     for step in tqdm(range(steps)):
-        target_style_features, target_content_feature = vgg(target_img)
+        target_style_features, target_content_features = vgg(target_img)
 
-        c_loss = content_loss(target_content_feature, content_feature)
+        c_loss = 0
+        for t, c in zip(target_content_features, content_features):
+            c_loss += content_loss(t, c)
+
 
         s_loss = 0
         for t, s in zip(target_style_features, style_features):
