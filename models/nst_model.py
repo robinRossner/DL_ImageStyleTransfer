@@ -46,18 +46,27 @@ def save(target, name):
   save_image(img, f'{name}.png')
 
 class VGG(nn.Module):
-  def __init__(self):
-    super(VGG, self).__init__()
-    self.select_features = ['0', '5', '10', '19', '28'] #conv layers
-    self.vgg = vgg19(weights=VGG19_Weights.DEFAULT).features
-  
-  def forward(self, output):
-    features = []
-    for name, layer in self.vgg._modules.items():
-      output = layer(output)
-      if name in self.select_features:
-        features.append(output)
-    return features
+    def __init__(self):
+        super().__init__()
+        self.vgg = vgg19(weights=VGG19_Weights.DEFAULT).features
+        self.style_layers = ['0', '5', '10', '19', '28']
+        self.content_layer = '19'  # conv4_2
+
+        for param in self.vgg.parameters():
+            param.requires_grad = False
+
+    def forward(self, x):
+        style_features = []
+        content_feature = None
+
+        for name, layer in self.vgg._modules.items():
+            x = layer(x)
+            if name in self.style_layers:
+                style_features.append(x)
+            if name == self.content_layer:
+                content_feature = x
+
+        return style_features, content_feature
 
 def run_and_save(content_dir, style_dir, vgg, steps, alpha, beta, lr=0.001, name="nst_result"):
     """Runs neural style transfer and saves the output image.
