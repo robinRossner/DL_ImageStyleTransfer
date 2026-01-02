@@ -14,7 +14,8 @@ def build_transform():
         transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
     ])
 
-def process_image(path, transform, device=None):
+def process_image(path, device=None):
+    transform = build_transform()
     image = load_image(path)
     tensor = transform(image).unsqueeze(0)  # add batch dim
 
