@@ -21,7 +21,7 @@ else:
 
 print(f"Using device: {device}")
 
-def get_content_loss(target_feature, content_feature):
+def content_loss(target_feature, content_feature):
     return torch.mean((target_feature - content_feature) ** 2)
 
 def gram_matrix(input, c, h, w):
@@ -31,7 +31,7 @@ def gram_matrix(input, c, h, w):
   G = torch.mm(input, input.t())
   return G
   
-def get_style_loss(target, style):
+def style_loss(target, style):
   _, c, h, w = target.size()
   G = gram_matrix(target, c, h, w) #gram matrix for the target image
   S = gram_matrix(style, c, h, w) #gram matrix for the style image
@@ -77,24 +77,24 @@ def run_and_save(content_dir, style_dir, vgg, steps, alpha, beta, lr=0.001, name
     target_img = content_img.clone().requires_grad_(True)
     optimizer = optimization.Adam([target_img], lr=lr)
 
+    with torch.no_grad():
+        style_features, _ = vgg(style_img)
+        _, content_feature = vgg(content_img)
+
     for step in tqdm(range(steps)):
-    #get feature vectors representations for every image
-      target_feature = vgg(target_img)
-      content_feature = vgg(content_img)
-      style_feature = vgg(style_img)
+        target_style_features, target_content_feature = vgg(target_img)
 
-      style_loss = 0
-      content_loss = 0
+        c_loss = content_loss(target_content_feature, content_feature)
 
-      for target, content, style in zip(target_feature, content_feature, style_feature):
-          content_loss += get_content_loss(target, content)
-          style_loss += get_style_loss(target, style)
-    
-      total_loss = alpha*content_loss+beta*style_loss
-    
-      optimizer.zero_grad()
-      total_loss.backward()
-      optimizer.step()
+        s_loss = 0
+        for t, s in zip(target_style_features, style_features):
+            s_loss += style_loss(t, s)
+
+        total_loss = alpha * c_loss + beta * s_loss
+
+        optimizer.zero_grad()
+        total_loss.backward()
+        optimizer.step()
 
     save(target_img, name)
 
