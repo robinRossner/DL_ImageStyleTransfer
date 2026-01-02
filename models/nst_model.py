@@ -11,7 +11,13 @@ from torchvision.utils import save_image
 from tqdm import tqdm
 from PIL import Image
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+if torch.cuda.is_available():
+    if torch.cuda.device_count() > 1:
+        device = torch.device("cuda:1")  # RTX 3060 Ti
+    else:
+        device = torch.device("cuda:0")
+else:
+    device = torch.device("cpu")
 
 print(f"Using device: {device}")
 
