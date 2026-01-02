@@ -47,7 +47,7 @@ class VGG(nn.Module):
         super().__init__()
         self.vgg = vgg19(weights=VGG19_Weights.DEFAULT).features
         self.style_layers = ['0', '5', '10', '19', '28']
-        self.content_layer = '19'  # conv4_2
+        self.content_layers = ['19', '21']  # conv4_2 + conv4_3
 
         for param in self.vgg.parameters():
             param.requires_grad = False
@@ -80,7 +80,7 @@ def run_and_save(content_dir, style_dir, vgg, steps, alpha, beta, lr=0.001, name
     content_img = process_image(content_dir, device)
     style_img = process_image(style_dir, device)
 
-    target_img = torch.randn_like(content_img).requires_grad_(True)
+    target_img = content_img.clone().requires_grad_(True)
     optimizer = optimization.Adam([target_img], lr=lr)
 
     with torch.no_grad():
@@ -110,7 +110,7 @@ vgg = VGG().to(device).eval()
 content = "test_content_dog_128.png"
 style = "test_style_spiral_128.jpg"
 
-run_and_save(content, style, vgg, 10000, 1, 100000, lr=0.0005, name="high_style_weight")
-run_and_save(content, style, vgg, 10000, 1, 10000, lr=0.0005, name="medium_style_weight")
-run_and_save(content, style, vgg, 10000, 1, 1000, lr=0.0005, name="low_style_weight")
-run_and_save(content, style, vgg, 10000, 1, 100, lr=0.0005, name="very_low_style_weight")
+run_and_save(content, style, vgg, 10000, 10, 100000, lr=0.0005, name="high_style_weight")
+run_and_save(content, style, vgg, 10000, 10, 10000, lr=0.0005, name="medium_style_weight")
+run_and_save(content, style, vgg, 10000, 10, 1000, lr=0.0005, name="low_style_weight")
+run_and_save(content, style, vgg, 10000, 10, 100, lr=0.0005, name="very_low_style_weight")
