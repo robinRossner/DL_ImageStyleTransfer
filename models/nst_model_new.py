@@ -119,7 +119,7 @@ def neural_style_transfer_lbfgs(
         style_targets = {l: gram_matrix(s_feats[l]) for l in vgg.style_layers}
 
     # Gatys-style init: white noise image
-    target = torch.randn_like(content).to(device).requires_grad_(True)
+    target = content.clone().todevice(device).requires_grad_(True)
 
     optimizer = optim.LBFGS([target], max_iter=1, history_size=50, line_search_fn="strong_wolfe")
 
@@ -178,35 +178,49 @@ if __name__ == "__main__":
     style = "test_style_gogh_512.png"
 
     neural_style_transfer_lbfgs(
-        content_path=content,
-        style_path=style,
-        out_path="out/nst_gatys_lbfgs.png",
-        steps=300,        # try 300-1000 depending on CPU/GPU
-        alpha=1.0,
-        beta=1e4,
-        tv_weight=1e-6,   # set 0.0 if you want no TV
-        save_every=50,
+    content_path=content,
+    style_path=style,
+    out_path="out/nst_pretty.png",
+    steps=800,          # 800–1200 on CPU for 512px
+    alpha=1.0,
+    beta=5e3,           # start here; try 2e3..2e4
+    tv_weight=3e-5,     # THIS is the big difference
+    save_every=200,
     )
 
-    # Beta comparison (should differ now)
+
+    # low style
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/nst_beta_low.png",
-        steps=300,
+        out_path="out/beta_1e3.png",
+        steps=600,
         alpha=1.0,
-        beta=1e2,
-        tv_weight=1e-6,
-        save_every=150,
+        beta=1e3,
+        tv_weight=3e-5,
+        save_every=300,
     )
 
+    # medium
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/nst_beta_high.png",
-        steps=300,
+        out_path="out/beta_5e3.png",
+        steps=600,
         alpha=1.0,
-        beta=1e5,
-        tv_weight=1e-6,
-        save_every=150,
+        beta=5e3,
+        tv_weight=3e-5,
+        save_every=300,
+    )
+
+    # high
+    neural_style_transfer_lbfgs(
+        content_path=content,
+        style_path=style,
+        out_path="out/beta_2e4.png",
+        steps=600,
+        alpha=1.0,
+        beta=2e4,
+        tv_weight=3e-5,
+        save_every=300,
     )
