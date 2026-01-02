@@ -46,6 +46,7 @@ class VGG(nn.Module):
     def __init__(self):
         super().__init__()
         self.vgg = vgg19(weights=VGG19_Weights.DEFAULT).features
+
         self.style_layers = ['0', '5', '10', '19', '28']
         self.content_layers = ['19', '21']  # conv4_2 + conv4_3
 
@@ -54,16 +55,19 @@ class VGG(nn.Module):
 
     def forward(self, x):
         style_features = []
-        content_feature = None
+        content_features = []
 
         for name, layer in self.vgg._modules.items():
             x = layer(x)
+
             if name in self.style_layers:
                 style_features.append(x)
-            if name == self.content_layer:
-                content_feature = x
 
-        return style_features, content_feature
+            if name in self.content_layers:
+                content_features.append(x)
+
+        return style_features, content_features
+
 
 def run_and_save(content_dir, style_dir, vgg, steps, alpha, beta, lr=0.001, name="nst_result"):
     """Runs neural style transfer and saves the output image.
