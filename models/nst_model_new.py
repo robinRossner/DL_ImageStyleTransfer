@@ -175,12 +175,12 @@ def neural_style_transfer_lbfgs(
 
 if __name__ == "__main__":
     content = "test_content_dog_512.png"
-    style = "test_style_spiral_512.jpg"
+    style = "test_style_gogh_512.png"
 
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="nst_gatys_lbfgs.png",
+        out_path="out/nst_gatys_lbfgs.png",
         steps=300,        # try 300-1000 depending on CPU/GPU
         alpha=1.0,
         beta=1e4,
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="nst_beta_low.png",
+        out_path="out/nst_beta_low.png",
         steps=300,
         alpha=1.0,
         beta=1e2,
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="nst_beta_high.png",
+        out_path="out/nst_beta_high.png",
         steps=300,
         alpha=1.0,
         beta=1e5,
