@@ -65,8 +65,8 @@ def run_and_save(content_dir, style_dir, vgg, steps, alpha, beta, lr=0.001, name
         lr (float, optional): Learning rate for the optimizer. Defaults to 0.001.
         name (str, optional): Name for the saved output image. Defaults to "nst_result".
     """
-    content_img = process_image(content_dir)
-    style_img = process_image(style_dir)
+    content_img = process_image(content_dir, device)
+    style_img = process_image(style_dir, device)
 
     target_img = content_img.clone().requires_grad_(True)
     optimizer = optimization.Adam([target_img], lr=lr)
