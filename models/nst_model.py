@@ -97,8 +97,8 @@ vgg = VGG().to(device).eval()
 
 model = vgg19(pretrained=True).features
 
-content = "/home/gayrobin/DL_ImageStyleTransfer/notebooks/test_content_dog_128.png"
-style = "/home/gayrobin/DL_ImageStyleTransfer/notebooks/test_style_spiral_128.jpg"
+content = "test_content_dog_128.png"
+style = "test_style_spiral_128.jpg"
 
 run_and_save(content, style, vgg, 10000, 1, 100000, lr=0.003, name="high_style_weight")
 run_and_save(content, style, vgg, 10000, 1, 10000, lr=0.003, name="medium_style_weight")

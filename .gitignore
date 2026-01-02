@@ -1,6 +1,9 @@
 # .gitignore
 .venv/
+venv/
 data/content/processed/*
 data/content/raw/*
 data/style/processed/*
 data/style/raw/*
+# local config
+config/config.yaml
