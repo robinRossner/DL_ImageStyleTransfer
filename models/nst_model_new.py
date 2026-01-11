@@ -160,6 +160,8 @@ def neural_style_transfer_lbfgs(
         loss = optimizer.step(closure)
         clamp_normalized_(target)
 
+        if step % 50 == 0 or step == 1:
+            print(f"Step {step}/{steps} done.")
         if step == 1 or step % save_every == 0 or step == steps:
             step_path = out_path.replace(".png", f"_step{step}.png")
             denorm_and_save(target, step_path)
@@ -185,20 +187,31 @@ if __name__ == "__main__":
     alpha=1.0,
     beta=5e3,           # start here; try 2e3..2e4
     tv_weight=3e-5,     # THIS is the big difference
-    save_every=200,
+    save_every=400,
     )
 
+    neural_style_transfer_lbfgs(
+        content_path=content,
+        style_path=style,
+        out_path="out/nst_beta_high_new.png",
+        steps=800,
+        alpha=1.0,
+        beta=1e5,
+        tv_weight=1e-6,
+        save_every=400,
+    )
 
+    """
     # low style
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
         out_path="out/beta_1e3.png",
-        steps=600,
+        steps=800,
         alpha=1.0,
         beta=1e3,
         tv_weight=3e-5,
-        save_every=300,
+        save_every=400,
     )
 
     # medium
@@ -206,11 +219,11 @@ if __name__ == "__main__":
         content_path=content,
         style_path=style,
         out_path="out/beta_5e3.png",
-        steps=600,
+        steps=800,
         alpha=1.0,
         beta=5e3,
         tv_weight=3e-5,
-        save_every=300,
+        save_every=400,
     )
 
     # high
@@ -218,9 +231,21 @@ if __name__ == "__main__":
         content_path=content,
         style_path=style,
         out_path="out/beta_2e4.png",
-        steps=600,
+        steps=800,
         alpha=1.0,
         beta=2e4,
         tv_weight=3e-5,
-        save_every=300,
+        save_every=400,
     )
+
+    neural_style_transfer_lbfgs(
+        content_path=content,
+        style_path=style,
+        out_path="out/nst_beta_high.png",
+        steps=800,
+        alpha=1.0,
+        beta=1e5,
+        tv_weight=1e-6,
+        save_every=400,
+    )
+    """
