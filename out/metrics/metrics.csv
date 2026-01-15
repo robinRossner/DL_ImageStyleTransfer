@@ -1,0 +1,4 @@
+method,content,style,content_vgg_dist,style_gram_dist
+precomputed,x_c,x_s,2.204662799835205,257800320.140625
+precomputed,x_c,x_s,0.0,17077751379.0625
+precomputed,img_14.jpg,img_14.jpg,style_6.jpg,0.0,17077751379.0625
