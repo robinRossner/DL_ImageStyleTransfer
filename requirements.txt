@@ -41,3 +41,4 @@ tqdm
 traitlets
 typing_extensions
 wcwidth
+pyyaml

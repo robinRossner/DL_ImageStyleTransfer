@@ -1,7 +1,6 @@
 paths:
-  data_dir: /absolute/path/to/data
-  output_dir: /absolute/path/to/outputs
-  pretrained_dir: /absolute/path/to/models
+  data_dir: /absolute/path/to/data # e.g. /Users/.../ProjectFolder/data/
+  output_dir: /absolute/path/to/outputs # e.g. /Users/.../ProjectFolder/outputs/
 
 training:
-  device: cuda
+  device: None

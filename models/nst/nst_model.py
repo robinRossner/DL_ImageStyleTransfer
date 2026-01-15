@@ -1,5 +1,6 @@
 import os
 from typing import Dict, Optional
+import yaml
 
 import torch
 import torch.nn as nn
@@ -7,13 +8,23 @@ import torch.optim as optim
 from torchvision.models import vgg19, VGG19_Weights
 from torchvision.utils import save_image
 
-from loader import process_image  # <-- your loader
+from loader import process_image
 
 # Must match loader.py normalization
 IMAGENET_MEAN = torch.tensor([0.485, 0.456, 0.406])
 IMAGENET_STD  = torch.tensor([0.229, 0.224, 0.225])
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+with open("config.yaml", "r", encoding="utf-8") as f:
+    config = yaml.safe_load(f)
+
+data_dir = config["paths"]["data_dir"]
+output_dir = config["paths"]["output_dir"]
+device_config = config["training"]["device"]
+
+if device_config is None:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+else:
+    device = torch.device(device_config)
 print("Using device:", device)
 
 
@@ -178,8 +189,8 @@ def neural_style_transfer_lbfgs(
 
 
 if __name__ == "__main__":
-    content = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_26.jpg"
-    style = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/style/processed/style_8.jpg"
+    content = data_dir + "/content/processed/img_26.jpg"
+    style = data_dir + "/style/processed/style_8.jpg"
 
     neural_style_transfer_lbfgs(
         content_path=content,
