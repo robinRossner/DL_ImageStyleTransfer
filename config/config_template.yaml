@@ -1,6 +1,9 @@
+# Configuration Template File
+# Duplicate this file as config.yaml and fill in the absolute paths.
+
 paths:
   data_dir: /absolute/path/to/data # e.g. /Users/.../ProjectFolder/data/
   output_dir: /absolute/path/to/outputs # e.g. /Users/.../ProjectFolder/outputs/
 
 training:
-  device: None
+  device: None # Dont change this unless intentional GPU assignment is needed
