@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
@@ -63,21 +63,15 @@ class VGGFeatures(nn.Module):
 
 
 def gram_matrix(feat: torch.Tensor) -> torch.Tensor:
-    """Normalized Gram matrix (B,C,H,W) -> (B,C,C)."""
+    """Unnormalized Gram matrix (B,C,H,W) -> (B,C,C)."""
     B, C, H, W = feat.shape
     F = feat.view(B, C, H * W)
     G = torch.bmm(F, F.transpose(1, 2))
-    return G / (C * H * W)
+    return G  # unnormalized for paper-style normalization later
 
 
 def mse(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return torch.mean((a - b) ** 2)
-
-
-def tv_loss(x: torch.Tensor) -> torch.Tensor:
-    dh = torch.mean(torch.abs(x[:, :, 1:, :] - x[:, :, :-1, :]))
-    dw = torch.mean(torch.abs(x[:, :, :, 1:] - x[:, :, :, :-1]))
-    return dh + dw
 
 
 def clamp_normalized_(x: torch.Tensor) -> None:
@@ -97,11 +91,11 @@ def neural_style_transfer_lbfgs(
     content_path: str,
     style_path: str,
     out_path: str = "nst_out.png",
-    steps: int = 300,          # LBFGS steps (each calls closure once here)
+    steps: int = 1200,          # LBFGS steps (each calls closure once here)
     alpha: float = 1.0,
     beta: float = 1e4,
-    tv_weight: float = 1e-6,   # set 0.0 for “pure” Gatys
-    save_every: int = 50,
+    save_every: int = 400,
+    style_layer_weights: Optional[Dict[int, float]] = None,
 ) -> None:
 
     # Load images with YOUR loader (no resizing here)
@@ -109,6 +103,10 @@ def neural_style_transfer_lbfgs(
     style = process_image(style_path, device=device)
 
     vgg = VGGFeatures().to(device)
+
+    # Set default equal weights for style layers
+    if style_layer_weights is None:
+        style_layer_weights = {l: 1.0 for l in vgg.style_layers}
 
     # Precompute targets
     with torch.no_grad():
@@ -118,7 +116,7 @@ def neural_style_transfer_lbfgs(
         content_target = c_feats[vgg.content_layer]
         style_targets = {l: gram_matrix(s_feats[l]) for l in vgg.style_layers}
 
-    # Gatys-style init: white noise image
+    # content image init
     target = content.clone().requires_grad_(True)
 
     optimizer = optim.LBFGS([target], max_iter=1, history_size=50, line_search_fn="strong_wolfe")
@@ -126,12 +124,11 @@ def neural_style_transfer_lbfgs(
     # For logging
     last_c = 0.0
     last_s = 0.0
-    last_tv = 0.0
 
     for step in range(1, steps + 1):
 
         def closure():
-            nonlocal last_c, last_s, last_tv
+            nonlocal last_c, last_s
             optimizer.zero_grad(set_to_none=True)
 
             feats = vgg(target)
@@ -139,21 +136,29 @@ def neural_style_transfer_lbfgs(
             # Content loss (relu4_2)
             c_loss = mse(feats[vgg.content_layer], content_target)
 
-            # Style loss (sum over layers of Gram MSE)
+            # Style loss (weighted sum over layers with paper normalization)
             s_loss = torch.tensor(0.0, device=device)
             for l in vgg.style_layers:
-                s_loss = s_loss + mse(gram_matrix(feats[l]), style_targets[l])
+                w_l = style_layer_weights.get(l, 1.0)
 
-            # TV regularization (optional)
-            t_loss = tv_loss(target)
+                B, C, H, W = feats[l].shape
+                N = C
+                M = H * W
 
-            total = alpha * c_loss + beta * s_loss + tv_weight * t_loss
+                G = gram_matrix(feats[l])
+                A = style_targets[l]  # precomputed grams for style
+
+                layer_loss = torch.mean((G - A) ** 2)
+                layer_loss = layer_loss / (4.0 * (N ** 2) * (M ** 2))
+
+                s_loss = s_loss + w_l * layer_loss
+
+            total = alpha * c_loss + beta * s_loss
             total.backward()
 
             # store for logging
             last_c = float(c_loss.detach())
             last_s = float(s_loss.detach())
-            last_tv = float(t_loss.detach())
 
             return total
 
@@ -167,85 +172,57 @@ def neural_style_transfer_lbfgs(
             denorm_and_save(target, step_path)
             print(
                 f"[{step}/{steps}] "
-                f"total={float(loss):.4f} content={last_c:.6f} style={last_s:.6f} tv={last_tv:.6f} "
+                f"total={float(loss):.4f} content={last_c:.6f} style={last_s:.6f} "
                 f"saved={step_path}"
             )
 
-    denorm_and_save(target, out_path)
-    print("Final saved:", out_path)
-
 
 if __name__ == "__main__":
-    content = "test_content_dog_512.png"
-    style = "test_style_gogh_512.png"
-
-    neural_style_transfer_lbfgs(
-    content_path=content,
-    style_path=style,
-    out_path="out/nst_pretty.png",
-    steps=800,          # 800–1200 on CPU for 512px
-    alpha=1.0,
-    beta=5e3,           # start here; try 2e3..2e4
-    tv_weight=3e-5,     # THIS is the big difference
-    save_every=400,
-    )
+    content = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_26.jpg"
+    style = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/style/processed/style_8.jpg"
 
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/nst_beta_high_new.png",
-        steps=800,
+        out_path="out/1e4/nst_1e4.png",
+        steps=1200,
+        alpha=1.0,
+        beta=1e4,
+        save_every=400,
+    )
+    neural_style_transfer_lbfgs(
+        content_path=content,
+        style_path=style,
+        out_path="out/1e5/nst_1e5.png",
+        steps=1200,
         alpha=1.0,
         beta=1e5,
-        tv_weight=1e-6,
         save_every=400,
     )
-
-    """
-    # low style
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/beta_1e3.png",
-        steps=800,
+        out_path="out/1e6/nst_1e6.png",
+        steps=1200,
         alpha=1.0,
-        beta=1e3,
-        tv_weight=3e-5,
+        beta=1e6,
         save_every=400,
     )
-
-    # medium
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/beta_5e3.png",
-        steps=800,
+        out_path="out/1e7/nst_1e7.png",
+        steps=1200,
         alpha=1.0,
-        beta=5e3,
-        tv_weight=3e-5,
+        beta=1e7,
         save_every=400,
     )
-
-    # high
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/beta_2e4.png",
-        steps=800,
+        out_path="out/1e8/nst_1e8.png",
+        steps=1200,
         alpha=1.0,
-        beta=2e4,
-        tv_weight=3e-5,
+        beta=1e8,
         save_every=400,
     )
-
-    neural_style_transfer_lbfgs(
-        content_path=content,
-        style_path=style,
-        out_path="out/nst_beta_high.png",
-        steps=800,
-        alpha=1.0,
-        beta=1e5,
-        tv_weight=1e-6,
-        save_every=400,
-    )
-    """
