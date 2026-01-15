@@ -14,14 +14,14 @@ from loader import process_image
 IMAGENET_MEAN = torch.tensor([0.485, 0.456, 0.406])
 IMAGENET_STD  = torch.tensor([0.229, 0.224, 0.225])
 
-with open("config.yaml", "r", encoding="utf-8") as f:
+with open("../config/config.yaml", "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 data_dir = config["paths"]["data_dir"]
 output_dir = config["paths"]["output_dir"]
 device_config = config["training"]["device"]
 
-if device_config is None:
+if device_config == "None":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 else:
     device = torch.device(device_config)
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/1e4/nst_1e4.png",
+        out_path= output_dir + "/1e4/nst_1e4.png",
         steps=1200,
         alpha=1.0,
         beta=1e4,
@@ -204,7 +204,7 @@ if __name__ == "__main__":
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/1e5/nst_1e5.png",
+        out_path= output_dir + "/1e5/nst_1e5.png",
         steps=1200,
         alpha=1.0,
         beta=1e5,
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/1e6/nst_1e6.png",
+        out_path= output_dir + "/1e6/nst_1e6.png",
         steps=1200,
         alpha=1.0,
         beta=1e6,
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/1e7/nst_1e7.png",
+        out_path= output_dir + "/1e7/nst_1e7.png",
         steps=1200,
         alpha=1.0,
         beta=1e7,
@@ -231,7 +231,7 @@ if __name__ == "__main__":
     neural_style_transfer_lbfgs(
         content_path=content,
         style_path=style,
-        out_path="out/1e8/nst_1e8.png",
+        out_path= output_dir + "/1e8/nst_1e8.png",
         steps=1200,
         alpha=1.0,
         beta=1e8,
