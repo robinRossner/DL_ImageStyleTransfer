@@ -2,9 +2,9 @@
 .venv/
 venv/
 venvStyleTransfer/
-data/content/processed/*
-data/content/raw/*
-data/style/processed/*
-data/style/raw/*
+#data/content/processed/*
+#data/content/raw/*
+#data/style/processed/*
+#data/style/raw/*
 # local config
 config/config.yaml
