@@ -3,6 +3,7 @@ import torch.nn as nn
 from torchvision.models import vgg19, VGG19_Weights
 from loader import process_image
 from nst_model import VGGFeatures
+from torchvision.utils import save_image
 
 """
 content image ─► encoder (VGG) ─► content features
@@ -88,3 +89,8 @@ def adain_stylize(content_path, style_path, alpha=1.0, device="cuda"):
 
     return out
 
+c_p = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_22.jpg"
+s_p = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/style/processed/test_style_gogh.png"
+output_tensor = adain_stylize(c_p, s_p, alpha=0.5, device="mps")
+save_image(output_tensor, "stylized_output.jpg")
+print("Image saved successfully!")
