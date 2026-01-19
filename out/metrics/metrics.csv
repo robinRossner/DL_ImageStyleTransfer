@@ -1,4 +1,4 @@
-method,content,style,content_vgg_dist,style_gram_dist
-precomputed,x_c,x_s,2.204662799835205,257800320.140625
-precomputed,x_c,x_s,0.0,17077751379.0625
-precomputed,img_14.jpg,img_14.jpg,style_6.jpg,0.0,17077751379.0625
+method,output,content,style,content_raw,content_norm,content_log,style_raw,style_norm,style_log
+match,nst_1e6_step1200.png,img_14.jpg,style_6.jpg,2.204663,0.00040,34.0,51560064.028125,0.00010,45.2
+out=content,img_14.jpg,img_14.jpg,style_6.jpg,0.000000,0.00000,100.0,3415550275.812500,0.00319,28.8
+allsame,img_14.jpg,img_14.jpg,img_14.jpg,0.000000,0.00000,100.0,0.000000,0.00000,100.0
