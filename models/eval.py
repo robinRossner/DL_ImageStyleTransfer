@@ -1,13 +1,12 @@
-import os, csv, time, argparse
+import os, csv, time, argparse, math
 import torch
 import yaml
 from PIL import Image
 from torchvision import transforms
 
-from loader import process_image
 from nst_model import VGGFeatures, gram_matrix, mse
-# from adain.adain_model import TO BE IMPLEMENTED
 
+# --- Config & Setup ---
 VGG_MEAN = (0.485, 0.456, 0.406)
 VGG_STD  = (0.229, 0.224, 0.225)
 
@@ -23,91 +22,98 @@ if device_config == "None":
 else:
     device = torch.device(device_config)
 
-def load_image_for_vgg(path: str, device, size=None):
-    img = Image.open(path).convert("RGB")
 
+def load_image_for_vgg(path: str, device, size=None):
+    """Loads and normalizes image for VGG."""
+    img = Image.open(path).convert("RGB")
     tfms = []
     if size is not None:
-        # size can be int or (H,W) depending on how you do it elsewhere
         tfms.append(transforms.Resize(size))
     tfms += [
-        transforms.ToTensor(),  # -> [3,H,W] in 0..1
+        transforms.ToTensor(),
         transforms.Normalize(mean=VGG_MEAN, std=VGG_STD),
     ]
-
-    x = transforms.Compose(tfms)(img).unsqueeze(0).to(device)  # [1,3,H,W]
+    x = transforms.Compose(tfms)(img).unsqueeze(0).to(device)
     return x
 
-def list_images(folder):
-    exts = {".jpg", ".jpeg", ".png", ".webp"}
-    return sorted(
-        os.path.join(folder, f)
-        for f in os.listdir(folder)
-        if os.path.splitext(f.lower())[1] in exts
-    )
+
+def calculate_layer_metrics(t1, t2):
+    """
+    Computes Raw, Normalized, and Log-Scaled metrics for a pair of tensors.
+    Returns: (raw_mse, norm_dist, log_score)
+    """
+    # 1. Raw MSE
+    raw_mse = mse(t1, t2).item()
+    
+    # 2. Normalized Distance (0 to 1)
+    # Calculate dynamic range max possible squared error
+    max_val = max(t1.max().item(), t2.max().item())
+    max_possible_sq_diff = (max_val ** 2) + 1e-8
+    
+    norm_dist = raw_mse / max_possible_sq_diff
+    
+    # 3. Log Score (0 to 100, higher is better)
+    # Similar to PSNR. Cap at 100 for perfect matches.
+    # We clip norm_dist to a tiny value to prevent log(0)
+    safe_dist = max(norm_dist, 1e-10)
+    log_score = -10 * math.log10(safe_dist)
+    if log_score > 100: 
+        log_score = 100.0
+        
+    return raw_mse, norm_dist, log_score
 
 
 def compute_metrics(out_t, content_t, style_t, vgg: VGGFeatures):
     """
-    All tensors are expected to be in the SAME normalized space as VGG expects
-    (i.e., whatever process_image produces).
+    Computes full suite of metrics for Content and Style.
+    Returns dictionaries for clarity.
     """
     with torch.no_grad():
         f_out = vgg(out_t)
         f_c   = vgg(content_t)
         f_s   = vgg(style_t)
 
-        # Content proxy: VGG feature distance at relu4_2 (your content_layer = 22)
-        content_dist = mse(f_out[vgg.content_layer], f_c[vgg.content_layer]).item()
+        # --- Content Metrics ---
+        # Compare feature maps at content_layer
+        c_raw, c_norm, c_log = calculate_layer_metrics(
+            f_out[vgg.content_layer], 
+            f_c[vgg.content_layer]
+        )
 
-        # Style proxy: Gram distance across your style layers
-        style_dist = 0.0
+        # --- Style Metrics ---
+        # Average the metrics across all style layers
+        s_raw_acc, s_norm_acc, s_log_acc = 0.0, 0.0, 0.0
+        
         for l in vgg.style_layers:
-            G = gram_matrix(f_out[l])
-            A = gram_matrix(f_s[l])
-            style_dist += mse(G, A).item()
+            G_out = gram_matrix(f_out[l])
+            G_style = gram_matrix(f_s[l])
+            
+            r, n, lg = calculate_layer_metrics(G_out, G_style)
+            s_raw_acc  += r
+            s_norm_acc += n
+            s_log_acc  += lg
+            
+        num_styles = len(vgg.style_layers)
+        s_raw  = s_raw_acc  / num_styles
+        s_norm = s_norm_acc / num_styles
+        s_log  = s_log_acc  / num_styles
 
-    return content_dist, style_dist
+    return {
+        "content_raw": c_raw, "content_norm": c_norm, "content_log": c_log,
+        "style_raw": s_raw,   "style_norm": s_norm,   "style_log": s_log
+    }
 
 
-def generate_output(method: str, content_path: str, style_path: str, **kwargs) -> torch.Tensor:
-    """
-    Returns a stylized tensor (normalized VGG space).
-    Implement per method by importing the right function.
-    """
-
-    if method.lower() == "nst":
-        # NST: drive from file paths, returns tensor
-        from nst_model import run_nst_return_tensor
-        return run_nst_return_tensor(
-            content_path=content_path,
-            style_path=style_path,
-            steps=kwargs.get("steps", 600),
-            alpha=kwargs.get("alpha", 1.0),
-            beta=kwargs.get("beta", 1e4),
-        )
-
-    elif method.lower() == "adain":
-        # AdaIN: you implement this to return a normalized tensor in same space
-        # Expected signature: adain_stylize(content_path, style_path, alpha=..., ...)
-        from adain_model import adain_stylize  # <-- change to your actual module/function
-        return adain_stylize(
-            content_path=content_path,
-            style_path=style_path,
-            alpha=kwargs.get("alpha", 1.0),
-        )
-
-    else:
-        raise ValueError(f"Unknown method: {method}")
-    
-def write_metrics_csv(
-    csv_path: str,
-    rows,
-    header=("method", "content", "style", "content_vgg_dist", "style_gram_dist")
-):
+def write_metrics_csv(csv_path: str, rows):
+    """Writes rows to CSV, creating header if file doesn't exist."""
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
-
     write_header = not os.path.exists(csv_path)
+
+    header = (
+        "method", "output", "content", "style",
+        "content_raw", "content_norm", "content_log",
+        "style_raw", "style_norm", "style_log"
+    )
 
     with open(csv_path, "a", newline="") as f:
         w = csv.writer(f)
@@ -115,6 +121,7 @@ def write_metrics_csv(
             w.writerow(header)
         for r in rows:
             w.writerow(r)
+
 
 def eval_triplet_and_log(
     out_path: str,
@@ -125,61 +132,93 @@ def eval_triplet_and_log(
     device,
 ):
     """
-    Evaluate a single (output, content, style) triplet and append metrics to CSV.
-    All images are loaded from disk and converted to VGG space.
+    Loads images, computes all 6 metrics, and logs to CSV.
     """
-
-    # ---- load content first (sets spatial size) ----
+    # 1. Load images
     x_c = load_image_for_vgg(content_path, device)
     H, W = x_c.shape[-2:]
 
-    # ---- load output + style, resized to match ----
     x   = load_image_for_vgg(out_path,   device, size=(H, W))
     x_s = load_image_for_vgg(style_path, device, size=(H, W))
 
-    # ---- names for CSV (use filenames) ----
+    # 2. Prepare metadata
     content_name = os.path.basename(content_path)
     style_name   = os.path.basename(style_path)
     output_name  = os.path.basename(out_path)
 
-    # ---- VGG + metrics ----
+    # 3. Compute Metrics
     vgg = VGGFeatures().to(device).eval()
+    m = compute_metrics(out_t=x, content_t=x_c, style_t=x_s, vgg=vgg)
 
-    content_dist, style_dist = compute_metrics(
-        out_t=x,
-        content_t=x_c,
-        style_t=x_s,
-        vgg=vgg
-    )
-
-    # ---- write to CSV ----
-    rows = [[
+    # 4. Format row
+    # precision: raw=6 (tiny numbers), norm=5, log=1 (it's decibels)
+    row = [
         method_name,
         output_name,
         content_name,
         style_name,
-        content_dist,
-        style_dist
-    ]]
+        f"{m['content_raw']:.6f}",
+        f"{m['content_norm']:.5f}",
+        f"{m['content_log']:.1f}",
+        f"{m['style_raw']:.6f}",
+        f"{m['style_norm']:.5f}",
+        f"{m['style_log']:.1f}"
+    ]
 
-    write_metrics_csv(
-        csv_path,
-        rows,
-        header=("method", "output", "content", "style",
-                "content_vgg_dist", "style_gram_dist")
-    )
-
-    return content_dist, style_dist
+    write_metrics_csv(csv_path, [row])
+    return m
 
 
 if __name__ == "__main__":
     csv_path = os.path.join(output_dir, "metrics", "metrics.csv")
 
     eval_triplet_and_log(
+            out_path="nst_1e6_step1200.png",
+            content_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
+            style_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/style/processed/style_6.jpg",
+            method_name="match",
+            csv_path=csv_path,
+            device=device,
+        )
+
+    
+    eval_triplet_and_log(
+            out_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
+            content_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
+            style_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/style/processed/style_6.jpg",
+            method_name="out=content",
+            csv_path=csv_path,
+            device=device,
+        )
+    
+    eval_triplet_and_log(
+            out_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
+            content_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
+            style_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
+            method_name="allsame",
+            csv_path=csv_path,
+            device=device,
+        )
+
+    """eval_triplet_and_log(
         out_path="EXAMPLE_OUTPUT_PATH.jpg",
         content_path="EXAMPLE_CONTENT_PATH.jpg",
         style_path="EXAMPLE_STYLE_PATH.jpg",
         method_name="precomputed",
         csv_path=csv_path,
         device=device,
-    )
+    )"""
+
+
+"""
+How to interpret the new "Log" columns:
+0 - 10: Terrible match (Completely different)
+
+10 - 20: Poor match (Visible similarity, but major errors)
+
+20 - 40: Good match (Strong style/content similarity)
+
+40+: Excellent match (Very hard to distinguish)
+
+100: Identity (Exact same image)
+"""
