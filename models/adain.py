@@ -1,96 +1,130 @@
 import torch
 import torch.nn as nn
-from torchvision.models import vgg19, VGG19_Weights
-from loader import process_image
-from nst_model import VGGFeatures
-from torchvision.utils import save_image
+from PIL import Image
+from torchvision import transforms, utils
+import os
 
-"""
-content image ─► encoder (VGG) ─► content features
-style image   ─► encoder (VGG) ─► style features
-content feat + style feat ─► AdaIN ─► stylized features ─► decoder ─► output image
-Adaptive Instance Normalization (AdaIN) performs arbitrary style transfer in a single
-forward pass by aligning the channel-wise mean and variance of content features to those
-of the style features. A tunable parameter α controls the strength of style transfer,
-enabling smooth interpolation between content preservation and stylization.
-"""
+# 1. FIXED LOADER: Raw [0, 1] scaling only 
+def load_adain_image(path, device, size=512):
+    img = Image.open(path).convert("RGB")
+    t = transforms.Compose([
+        transforms.Resize(size),
+        transforms.CenterCrop(size),
+        transforms.ToTensor(), # Standard [0, 1] scaling
+    ])
+    return t(img).unsqueeze(0).to(device)
 
+# 2. ARCHITECTURE: Huang & Belongie (2017) specification 
+class VGGEncoder(nn.Module):
+    def __init__(self, weights_path, device):
+        super().__init__()
+        self.vgg = nn.Sequential(
+            nn.Conv2d(3, 3, (1, 1)),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(3, 64, (3, 3)),
+            nn.ReLU(),  # relu1_1
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(64, 64, (3, 3)),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2), (2, 2), (0, 0), ceil_mode=True),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(64, 128, (3, 3)),
+            nn.ReLU(),  # relu2_1
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(128, 128, (3, 3)),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2), (2, 2), (0, 0), ceil_mode=True),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(128, 256, (3, 3)),
+            nn.ReLU(),  # relu3_1
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(256, 256, (3, 3)),
+            nn.ReLU(),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(256, 256, (3, 3)),
+            nn.ReLU(),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(256, 256, (3, 3)),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2), (2, 2), (0, 0), ceil_mode=True),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(256, 512, (3, 3)),
+            nn.ReLU()   # relu4_1 bottleneck
+        )
+        # Load pre-trained weights without prefix errors
+        self.vgg.load_state_dict(torch.load(weights_path, map_location=device), strict=False)
+        for p in self.parameters():
+            p.requires_grad_(False)
+
+    def forward(self, x):
+        return self.vgg(x)
+
+class Decoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.decoder = nn.Sequential(
+            nn.ReflectionPad2d(1), nn.Conv2d(512, 256, 3), nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ReflectionPad2d(1), nn.Conv2d(256, 256, 3), nn.ReLU(),
+            nn.ReflectionPad2d(1), nn.Conv2d(256, 256, 3), nn.ReLU(),
+            nn.ReflectionPad2d(1), nn.Conv2d(256, 256, 3), nn.ReLU(),
+            nn.ReflectionPad2d(1), nn.Conv2d(256, 128, 3), nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ReflectionPad2d(1), nn.Conv2d(128, 128, 3), nn.ReLU(),
+            nn.ReflectionPad2d(1), nn.Conv2d(128, 64, 3), nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ReflectionPad2d(1), nn.Conv2d(64, 64, 3), nn.ReLU(),
+            nn.ReflectionPad2d(1), nn.Conv2d(64, 3, 3)
+        )
+
+    def forward(self, x):
+        return self.decoder(x)
+
+# 3. ADAIN LOGIC: Feature statistics transfer [cite: 14, 31]
 def calc_mean_std(feat, eps=1e-5):
-    """
-    feat: [B, C, H, W]
-    returns mean and std: [B, C, 1, 1]
-    """
-    B, C = feat.size()[:2]
-    feat_var = feat.view(B, C, -1).var(dim=2) + eps
-    feat_std = feat_var.sqrt().view(B, C, 1, 1)
-    feat_mean = feat.view(B, C, -1).mean(dim=2).view(B, C, 1, 1)
+    N, C = feat.size()[:2]
+    feat_var = feat.view(N, C, -1).var(dim=2) + eps
+    feat_std = feat_var.sqrt().view(N, C, 1, 1)
+    feat_mean = feat.view(N, C, -1).mean(dim=2).view(N, C, 1, 1)
     return feat_mean, feat_std
-
 
 def adain(content_feat, style_feat):
     c_mean, c_std = calc_mean_std(content_feat)
     s_mean, s_std = calc_mean_std(style_feat)
-
     normalized = (content_feat - c_mean) / c_std
     return normalized * s_std + s_mean
 
+# 4. INFERENCE FUNCTION
+def run_stylization(content_path, style_path, v_path, d_path, alpha, device):
+    content = load_adain_image(content_path, device)
+    style = load_adain_image(style_path, device)
 
-class Decoder(nn.Module):
-    """
-    Simple decoder architecture used in AdaIN papers
-    """
-    def __init__(self):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(512, 256, 3),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2),
-
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(256, 256, 3),
-            nn.ReLU(inplace=True),
-
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(256, 128, 3),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2),
-
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(128, 64, 3),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2),
-
-            nn.ReflectionPad2d(1),
-            nn.Conv2d(64, 3, 3),
-        )
-
-    def forward(self, x):
-        return self.net(x)
-
-
-def adain_stylize(content_path, style_path, alpha=1.0, device="cuda"):
-    # Load images
-    content = process_image(content_path, device=device)
-    style   = process_image(style_path, device=device)
-
-    # Encoder (VGG up to relu4_1)
-    vgg = VGGFeatures().to(device).eval()
-    decoder = Decoder().to(device).eval()
+    encoder = VGGEncoder(v_path, device).to(device).eval()
+    decoder = Decoder().to(device)
+    # Target internal sequential module for weight loading
+    decoder.decoder.load_state_dict(torch.load(d_path, map_location=device))
+    decoder.eval()
 
     with torch.no_grad():
-        c_feat = vgg(content)[20]  # relu4_1
-        s_feat = vgg(style)[20]
-
+        c_feat = encoder(content)
+        s_feat = encoder(style)
+        
+        # AdaIN interpolation for strength ablation 
         t = adain(c_feat, s_feat)
         t = alpha * t + (1 - alpha) * c_feat
+        
+        output = decoder(t)
+    return output.clamp(0, 1)
 
-        out = decoder(t)
+# 5. STRENGTH ABLATION EXECUTION 
+if __name__ == "__main__":
+    device = "mps" 
+    c_path = "/Users/lizochek.aus/Desktop/sem_5/dl_pj/DL_ImageStyleTransfer/data/content/processed/img_5.jpg"
+    s_path = "/Users/lizochek.aus/Desktop/sem_5/dl_pj/DL_ImageStyleTransfer/data/style/processed/style_3.jpg"
+    v_weights = "/Users/lizochek.aus/Desktop/sem_5/dl_pj/DL_ImageStyleTransfer/models/vgg_normalised.pth"
+    d_weights = "/Users/lizochek.aus/Desktop/sem_5/dl_pj/DL_ImageStyleTransfer/models/decoder.pth"
 
-    return out
-
-c_p = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_22.jpg"
-s_p = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/style/processed/test_style_gogh.png"
-output_tensor = adain_stylize(c_p, s_p, alpha=0.5, device="mps")
-save_image(output_tensor, "stylized_output.jpg")
-print("Image saved successfully!")
+    for alpha in [0.2, 0.5, 0.8, 1.0]:
+        result = run_stylization(c_path, s_path, v_weights, d_weights, alpha, device)
+        utils.save_image(result, f"alpha_{alpha}.jpg")
+        print(f"Success: alpha_{alpha}.jpg saved.")
