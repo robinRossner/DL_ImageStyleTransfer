@@ -200,10 +200,6 @@ def calc_grid_betaxstep(content, style, steps, name):
         )
 
 if __name__ == "__main__":
-    style = data_dir + "/style/processed/style_1.png"
+    style = data_dir + "/style/processed/style_7.jpg"
     content = data_dir + "/content/processed/img_5.jpg"
-    calc_grid_betaxstep(content, style, steps=2000, name="style1_img5")
-
-    style = data_dir + "/style/processed/style_2.jpg"
-    content = data_dir + "/content/processed/img_25.jpg"
-    calc_grid_betaxstep(content, style, steps=2000, name="style2_img25")
+    calc_grid_betaxstep(content, style, steps=2000, name="style7_img5")
