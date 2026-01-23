@@ -8,3 +8,5 @@ venvStyleTransfer/
 #data/style/raw/*
 # local config
 config/config.yaml
+.DS_Store
+*/.DS_Store

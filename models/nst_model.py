@@ -186,54 +186,24 @@ def neural_style_transfer_lbfgs(
                 f"total={float(loss):.4f} content={last_c:.6f} style={last_s:.6f} "
                 f"saved={step_path}"
             )
-
+def calc_grid_betaxstep(content, style, steps, name):
+    beta_vals = [1e4, 1e5, 1e6, 1e7, 1e8]
+    for beta in beta_vals:
+        neural_style_transfer_lbfgs(
+            content_path=content,
+            style_path=style,
+            out_path= output_dir + f"/grid_search/{name}_beta_{beta}.png",
+            steps=steps,
+            alpha=1.0,
+            beta=beta,
+            save_every= 400
+        )
 
 if __name__ == "__main__":
-    content = data_dir + "/content/processed/img_26.jpg"
-    style = data_dir + "/style/processed/style_8.jpg"
+    style = data_dir + "/style/processed/style_1.jpg"
+    content = data_dir + "/content/processed/img_5.jpg"
+    calc_grid_betaxstep(content, style, steps=2000, name="style1_img5")
 
-    neural_style_transfer_lbfgs(
-        content_path=content,
-        style_path=style,
-        out_path= output_dir + "/1e4/nst_1e4.png",
-        steps=1200,
-        alpha=1.0,
-        beta=1e4,
-        save_every=400,
-    )
-    neural_style_transfer_lbfgs(
-        content_path=content,
-        style_path=style,
-        out_path= output_dir + "/1e5/nst_1e5.png",
-        steps=1200,
-        alpha=1.0,
-        beta=1e5,
-        save_every=400,
-    )
-    neural_style_transfer_lbfgs(
-        content_path=content,
-        style_path=style,
-        out_path= output_dir + "/1e6/nst_1e6.png",
-        steps=1200,
-        alpha=1.0,
-        beta=1e6,
-        save_every=400,
-    )
-    neural_style_transfer_lbfgs(
-        content_path=content,
-        style_path=style,
-        out_path= output_dir + "/1e7/nst_1e7.png",
-        steps=1200,
-        alpha=1.0,
-        beta=1e7,
-        save_every=400,
-    )
-    neural_style_transfer_lbfgs(
-        content_path=content,
-        style_path=style,
-        out_path= output_dir + "/1e8/nst_1e8.png",
-        steps=1200,
-        alpha=1.0,
-        beta=1e8,
-        save_every=400,
-    )
+    style = data_dir + "/style/processed/style_2.jpg"
+    content = data_dir + "/content/processed/img_25.jpg"
+    calc_grid_betaxstep(content, style, steps=2000, name="style2_img25")
