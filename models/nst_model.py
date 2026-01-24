@@ -224,9 +224,11 @@ def folder_nst():
     for i, content_img in enumerate(content_images):
         print("Processing content image:", content_img)
         print("Progress:" + str(i+1) + "/" + str(len(content_images)))
+        content_path = os.path.join(content_folder, content_img)
+        content = process_image(content_path, device=device)
+
         for j, style_img in enumerate(style_images):
             print(f"  Progress:" + str(j+1) + "/" + str(len(style_images)))
-            content_path = os.path.join(content_folder, content_img)
             style_path = os.path.join(style_folder, style_img)
             name = f"style{style_img.split('_')[1].split('.')[0]}_img{content_img.split('_')[1].split('.')[0]}"
             out_path = output_dir + f"/nst_all/{name}_beta_{beta}.png"
@@ -238,7 +240,8 @@ def folder_nst():
                 steps=step,
                 alpha=1.0,
                 beta=beta,
-                save_every=1200
+                save_every=1200,
+                content=content
             )
             out_path_step = out_path.replace(".png", f"_step{step}.png")
             eval_out_path = out_path_step if os.path.exists(out_path_step) else out_path
@@ -246,7 +249,7 @@ def folder_nst():
             from eval import eval_triplet_and_log
             csv_path = os.path.join(output_dir, "metrics", "metrics.csv")
             eval_triplet_and_log(
-                out_path=out_path,
+                out_path=eval_out_path,
                 content_path=content_path,
                 style_path=style_path,
                 method_name=f"nst_beta_{beta}",
@@ -255,20 +258,4 @@ def folder_nst():
             )
 
 if __name__ == "__main__":
-    import time
-    start = time.time()
-    print("Starting NST folder processing...")
-    print("time:", time.time())
-    start = time.time()
-    neural_style_transfer_lbfgs(
-                content_path=data_dir + "content/processed/img_5.jpg",
-                style_path=data_dir + "style/processed/style_3.jpg",
-                out_path=output_dir + "poooppp.png",
-                steps=1200,
-                alpha=1.0,
-                beta=1e7,
-                save_every=1200
-            )
-    end = time.time()
-    print("NST completed in seconds:", end - start)
-    #folder_nst()
+    folder_nst()
