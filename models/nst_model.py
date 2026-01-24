@@ -175,10 +175,12 @@ def neural_style_transfer_lbfgs(
 
         loss = optimizer.step(closure)
         clamp_normalized_(target)
-
+        """
         if step % 50 == 0 or step == 1:
             print(f"Step {step}/{steps} done.")
-        if step == 1 or step % save_every == 0 or step == steps:
+        """
+        #if step == 1 or step % save_every == 0 or step == steps:
+        if step == steps:
             step_path = out_path.replace(".png", f"_step{step}.png")
             denorm_and_save(target, step_path)
             print(
@@ -199,7 +201,44 @@ def calc_grid_betaxstep(content, style, steps, name):
             save_every= 400
         )
 
+def folder_nst():
+    content_folder = data_dir + "/content/processed/"
+    style_folder = data_dir + "/style/processed/"
+
+    content_images = [f for f in os.listdir(content_folder) if f.endswith(('.png', '.jpg', '.jpeg'))]
+    style_images = [f for f in os.listdir(style_folder) if f.endswith(('.png', '.jpg', '.jpeg'))]
+
+    step = 1200
+    beta = 1e7
+    for i, content_img in enumerate(content_images):
+        print("Processing content image:", content_img)
+        print("Progress:" + str(i+1) + "/" + str(len(content_images)))
+        for j, style_img in enumerate(style_images):
+            print(f"  Progress:" + str(j+1) + "/" + str(len(style_images)))
+            content_path = os.path.join(content_folder, content_img)
+            style_path = os.path.join(style_folder, style_img)
+            name = f"style{style_img.split('_')[1].split('.')[0]}_img{content_img.split('_')[1].split('.')[0]}"
+            out_path = output_dir + f"/nst_all/{name}_beta_{beta}.png"
+
+            neural_style_transfer_lbfgs(
+                content_path=content_path,
+                style_path=style_path,
+                out_path=out_path,
+                steps=step,
+                alpha=1.0,
+                beta=beta,
+                save_every=1200
+            )
+            from eval import eval_triplet_and_log
+            csv_path = os.path.join(output_dir, "metrics", "metrics.csv")
+            eval_triplet_and_log(
+                out_path=out_path,
+                content_path=content_path,
+                style_path=style_path,
+                method_name=f"nst_beta_{beta}",
+                csv_path=csv_path,
+                device=device,
+            )
+
 if __name__ == "__main__":
-    style = data_dir + "/style/processed/style_1.png"
-    content = data_dir + "/content/processed/img_9.jpg"
-    calc_grid_betaxstep(content, style, steps=2000, name="style7_img5")
+    folder_nst()

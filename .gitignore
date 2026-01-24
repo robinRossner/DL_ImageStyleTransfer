@@ -8,5 +8,8 @@ venvStyleTransfer/
 #data/style/raw/*
 # local config
 config/config.yaml
+out/grid_search/*
 .DS_Store
-*/.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
