@@ -107,11 +107,15 @@ def neural_style_transfer_lbfgs(
     beta: float = 1e4,
     save_every: int = 400,
     style_layer_weights: Optional[Dict[int, float]] = None,
+    content: Optional[torch.Tensor] = None,
+    style: Optional[torch.Tensor] = None
 ) -> None:
 
     # Load images with YOUR loader (no resizing here)
-    content = process_image(content_path, device=device)
-    style = process_image(style_path, device=device)
+    if content is None:
+        content = process_image(content_path, device=device)
+    if style is None:
+        style = process_image(style_path, device=device)
 
     vgg = VGGFeatures().to(device)
 
@@ -229,6 +233,9 @@ def folder_nst():
                 beta=beta,
                 save_every=1200
             )
+            out_path_step = out_path.replace(".png", f"_step{step}.png")
+            eval_out_path = out_path_step if os.path.exists(out_path_step) else out_path
+
             from eval import eval_triplet_and_log
             csv_path = os.path.join(output_dir, "metrics", "metrics.csv")
             eval_triplet_and_log(
