@@ -175,8 +175,6 @@ def main():
 if __name__ == "__main__":
     main()
 
-#python new_adain.py --content img_5.jpg --style style_7.png --out stylized.png --alpha 0.8
-
 
 """
 for a in 0.2 0.4 0.5 0.6 0.8 1.0; do

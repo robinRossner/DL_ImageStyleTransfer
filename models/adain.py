@@ -163,42 +163,15 @@ def folder_adain():
 # 5. STRENGTH ABLATION EXECUTION 
 if __name__ == "__main__":
     device = "mps" 
-    c_path = data_dir + "content/processed/img_9.jpg"
-    s_path = data_dir + "style/processed/style_1.png"
-    v_weights = "vgg_normalised.pth"
-    d_weights = "decoder.pth"
-
-    """for alpha in [0.0, 0.2, 0.4, 0.5, 0.6,0.8, 1.0]:
-        result = run_stylization(c_path, s_path, v_weights, d_weights, alpha, device)
-        utils.save_image(result, output_dir + f"adain_all/style3_img9_{alpha}.jpg")
-        print(f"Success: style3_img9_{alpha}.jpg saved.")
-    
-    c_path = data_dir + "content/processed/img_26.jpg"
-    s_path = data_dir + "style/processed/style_7.jpg"
-    for alpha in [0.2, 0.4, 0.5, 0.6, 0.8, 1.0]:
-        result = run_stylization(c_path, s_path, v_weights, d_weights, alpha, device)
-        utils.save_image(result, output_dir + f"adain_all/style7_img26_{alpha}.jpg")
-        print(f"Success: style7_img26_{alpha}.jpg saved.")"""
-    
-    c_path = data_dir + "content/processed/img_5.jpg"
-    #result = run_stylization(c_path, c_path, v_weights, d_weights, 1.0, "cpu")
-    #utils.save_image(result, output_dir + f"dumby.jpg")
-    from eval import eval_triplet_and_log
-    csv_path = os.path.join(output_dir, "metrics", "metricsAdain.csv")
-    for s_path in [data_dir + "style/processed/style_1.png",
-                   data_dir + "style/processed/style_3.jpg",
-                   data_dir + "style/processed/style_5.jpg"]:
-        for c_path in [data_dir + "content/processed/img_5.jpg",
-                    data_dir + "content/processed/img_14.jpg",
-                    data_dir + "content/processed/img_26.jpg"]:
-            result = run_stylization(c_path, s_path, v_weights, d_weights, 0.5, "cpu")
-            utils.save_image(result, output_dir + f"temp.jpg")
-            eval_triplet_and_log(
-                out_path= output_dir + f"temp.jpg",
-                content_path=c_path,
-                style_path=s_path,
-                method_name="adain_alpha_0.8",
-                csv_path=csv_path,
-                device=device,
-            )
-    print("Done")
+    style_folder = data_dir + "/style/processed/"
+    style_images = [f for f in os.listdir(style_folder) if f.endswith(('.png', '.jpg', '.jpeg'))]
+    content_img = data_dir + "/content/processed/img_9.jpg"
+    for style_img in style_images:
+        # apply style to content with 0.8 alpha
+        style_path = os.path.join(style_folder, style_img)
+        name = f"style{style_img.split('_')[1].split('.')[0]}_img9"
+        out_path = output_dir + f"adain_ablation/{name}_alpha_0.8.png"
+        v_weights = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/models/vgg_normalised.pth"
+        d_weights = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/models/decoder.pth"
+        result = run_stylization(content_img, style_path, v_weights, d_weights, 0.8, device)
+        utils.save_image(result, out_path)
