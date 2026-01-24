@@ -1,3 +1,4 @@
+method,output,content,style,content_raw,content_norm,content_log,style_raw,style_norm,style_log
 nst_beta_10000000.0,style2_img0_beta_10000000.0_step1200.png,img_0.jpg,style_2.jpg,12.380011,0.00037,34.3,2782475.772656,0.00000,62.0
 nst_beta_10000000.0,style6_img0_beta_10000000.0_step1200.png,img_0.jpg,style_6.jpg,7.329608,0.00036,34.4,30746347.011719,0.00005,49.8
 nst_beta_10000000.0,style1_img0_beta_10000000.0_step1200.png,img_0.jpg,style_1.png,5.268534,0.00026,35.8,2044811.113281,0.00001,54.8

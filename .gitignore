@@ -13,3 +13,4 @@ out/grid_search/*
 ._.DS_Store
 **/.DS_Store
 **/._.DS_Store
+out/nst_all/*

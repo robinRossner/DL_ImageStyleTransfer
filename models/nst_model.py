@@ -258,4 +258,18 @@ def folder_nst():
             )
 
 if __name__ == "__main__":
-    folder_nst()
+    content_path = data_dir + "/content/processed/img_26.jpg"
+    style_path = data_dir + "/style/processed/style_3.jpg"
+    step = 1200
+    beta = 1e7
+    name = "style3_img26"
+    out_path = output_dir + f"plump.png"
+    neural_style_transfer_lbfgs(
+                content_path=content_path,
+                style_path=style_path,
+                out_path=out_path,
+                steps=step,
+                alpha=1.0,
+                beta=beta,
+                save_every=1200
+            )

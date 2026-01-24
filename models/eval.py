@@ -208,7 +208,7 @@ def get_average_metrics(csv_path: str):
     return avg_content_raw, avg_content_norm, avg_content_log, avg_style_raw, avg_style_norm, avg_style_log
 
 if __name__ == "__main__":
-    print(get_average_metrics("/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/out/metrics/metricsAdain.csv"))
+    print(get_average_metrics("/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/out/metrics/metrics.csv"))
 
     csv_path = os.path.join(output_dir, "metrics", "metrics.csv")
     """
@@ -221,7 +221,7 @@ if __name__ == "__main__":
             device=device,
         )
 
-    
+
     eval_triplet_and_log(
             out_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
             content_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
@@ -230,7 +230,7 @@ if __name__ == "__main__":
             csv_path=csv_path,
             device=device,
         )
-    
+
     eval_triplet_and_log(
             out_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
             content_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
