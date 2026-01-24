@@ -168,10 +168,50 @@ def eval_triplet_and_log(
     write_metrics_csv(csv_path, [row])
     return m
 
+def get_average_metrics(csv_path: str):
+    """
+    Reads the CSV and computes average metrics for content and style.
+    Returns: (avg_content_raw, avg_content_norm, avg_content_log, avg_style_raw, avg_style_norm, avg_style_log)
+    """
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"CSV file not found: {csv_path}")
+
+    total_content_raw = 0.0
+    total_content_norm = 0.0
+    total_content_log = 0.0
+    total_style_raw = 0.0
+    total_style_norm = 0.0
+    total_style_log = 0.0
+    count = 0
+
+    with open(csv_path, "r", newline="") as f:
+        r = csv.DictReader(f)
+        for row in r:
+            total_content_raw += float(row["content_raw"])
+            total_content_norm += float(row["content_norm"])
+            total_content_log += float(row["content_log"])
+            total_style_raw += float(row["style_raw"])
+            total_style_norm += float(row["style_norm"])
+            total_style_log += float(row["style_log"])
+            count += 1
+
+    if count == 0:
+        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+
+    avg_content_raw = total_content_raw / count
+    avg_content_norm = total_content_norm / count
+    avg_content_log = total_content_log / count
+    avg_style_raw = total_style_raw / count
+    avg_style_norm = total_style_norm / count
+    avg_style_log = total_style_log / count
+
+    return avg_content_raw, avg_content_norm, avg_content_log, avg_style_raw, avg_style_norm, avg_style_log
 
 if __name__ == "__main__":
-    csv_path = os.path.join(output_dir, "metrics", "metrics.csv")
+    print(get_average_metrics("/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/out/metrics/metricsAdain.csv"))
 
+    csv_path = os.path.join(output_dir, "metrics", "metrics.csv")
+    """
     eval_triplet_and_log(
             out_path="nst_1e6_step1200.png",
             content_path="/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/data/content/processed/img_14.jpg",
@@ -200,7 +240,7 @@ if __name__ == "__main__":
             device=device,
         )
 
-    """eval_triplet_and_log(
+    eval_triplet_and_log(
         out_path="EXAMPLE_OUTPUT_PATH.jpg",
         content_path="EXAMPLE_CONTENT_PATH.jpg",
         style_path="EXAMPLE_STYLE_PATH.jpg",

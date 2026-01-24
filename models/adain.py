@@ -3,6 +3,15 @@ import torch.nn as nn
 from PIL import Image
 from torchvision import transforms, utils
 import os
+import yaml
+
+
+with open("../config/config.yaml", "r", encoding="utf-8") as f:
+    config = yaml.safe_load(f)
+
+data_dir = config["paths"]["data_dir"]
+output_dir = config["paths"]["output_dir"]
+device_config = config["training"]["device"]
 
 # 1. FIXED LOADER: Raw [0, 1] scaling only 
 def load_adain_image(path, device, size=512):
@@ -116,15 +125,80 @@ def run_stylization(content_path, style_path, v_path, d_path, alpha, device):
         output = decoder(t)
     return output.clamp(0, 1)
 
+def folder_adain():
+    content_folder = data_dir + "/content/processed/"
+    style_folder = data_dir + "/style/processed/"
+
+    content_images = [f for f in os.listdir(content_folder) if f.endswith(('.png', '.jpg', '.jpeg'))]
+    style_images = [f for f in os.listdir(style_folder) if f.endswith(('.png', '.jpg', '.jpeg'))]
+
+    step = 1200
+    alpha = 1.0
+    for i, content_img in enumerate(content_images):
+        print("Processing content image:", content_img)
+        print("Progress:" + str(i+1) + "/" + str(len(content_images)))
+        for j, style_img in enumerate(style_images):
+            print(f"  Progress:" + str(j+1) + "/" + str(len(style_images)))
+            content_path = os.path.join(content_folder, content_img)
+            style_path = os.path.join(style_folder, style_img)
+            name = f"style{style_img.split('_')[1].split('.')[0]}_img{content_img.split('_')[1].split('.')[0]}"
+            out_path = output_dir + f"/adain_all/{name}_alpha_{alpha}.png"
+
+            v_weights = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/models/vgg_normalised.pth"
+            d_weights = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/models/decoder.pth"
+            result = run_stylization(content_path, style_path, v_weights, d_weights, alpha, device)
+            utils.save_image(result, out_path)
+
+            from eval import eval_triplet_and_log
+            csv_path = os.path.join(output_dir, "metrics", "metrics.csv")
+            eval_triplet_and_log(
+                out_path=out_path,
+                content_path=content_path,
+                style_path=style_path,
+                method_name=f"adain_alpha_{alpha}",
+                csv_path=csv_path,
+                device=device,
+            )
+
 # 5. STRENGTH ABLATION EXECUTION 
 if __name__ == "__main__":
     device = "mps" 
-    c_path = "/Users/lizochek.aus/Desktop/sem_5/dl_pj/DL_ImageStyleTransfer/data/content/processed/img_5.jpg"
-    s_path = "/Users/lizochek.aus/Desktop/sem_5/dl_pj/DL_ImageStyleTransfer/data/style/processed/style_3.jpg"
-    v_weights = "/Users/lizochek.aus/Desktop/sem_5/dl_pj/DL_ImageStyleTransfer/models/vgg_normalised.pth"
-    d_weights = "/Users/lizochek.aus/Desktop/sem_5/dl_pj/DL_ImageStyleTransfer/models/decoder.pth"
+    c_path = data_dir + "content/processed/img_9.jpg"
+    s_path = data_dir + "style/processed/style_1.png"
+    v_weights = "vgg_normalised.pth"
+    d_weights = "decoder.pth"
 
-    for alpha in [0.2, 0.5, 0.8, 1.0]:
+    """for alpha in [0.0, 0.2, 0.4, 0.5, 0.6,0.8, 1.0]:
         result = run_stylization(c_path, s_path, v_weights, d_weights, alpha, device)
-        utils.save_image(result, f"alpha_{alpha}.jpg")
-        print(f"Success: alpha_{alpha}.jpg saved.")
+        utils.save_image(result, output_dir + f"adain_all/style3_img9_{alpha}.jpg")
+        print(f"Success: style3_img9_{alpha}.jpg saved.")
+    
+    c_path = data_dir + "content/processed/img_26.jpg"
+    s_path = data_dir + "style/processed/style_7.jpg"
+    for alpha in [0.2, 0.4, 0.5, 0.6, 0.8, 1.0]:
+        result = run_stylization(c_path, s_path, v_weights, d_weights, alpha, device)
+        utils.save_image(result, output_dir + f"adain_all/style7_img26_{alpha}.jpg")
+        print(f"Success: style7_img26_{alpha}.jpg saved.")"""
+    
+    c_path = data_dir + "content/processed/img_5.jpg"
+    #result = run_stylization(c_path, c_path, v_weights, d_weights, 1.0, "cpu")
+    #utils.save_image(result, output_dir + f"dumby.jpg")
+    from eval import eval_triplet_and_log
+    csv_path = os.path.join(output_dir, "metrics", "metricsAdain.csv")
+    for s_path in [data_dir + "style/processed/style_1.png",
+                   data_dir + "style/processed/style_3.jpg",
+                   data_dir + "style/processed/style_5.jpg"]:
+        for c_path in [data_dir + "content/processed/img_5.jpg",
+                    data_dir + "content/processed/img_14.jpg",
+                    data_dir + "content/processed/img_26.jpg"]:
+            result = run_stylization(c_path, s_path, v_weights, d_weights, 0.5, "cpu")
+            utils.save_image(result, output_dir + f"temp.jpg")
+            eval_triplet_and_log(
+                out_path= output_dir + f"temp.jpg",
+                content_path=c_path,
+                style_path=s_path,
+                method_name="adain_alpha_0.8",
+                csv_path=csv_path,
+                device=device,
+            )
+    print("Done")

@@ -1,6 +1,7 @@
 import os
 from typing import Dict, Optional
 import yaml
+import time
 
 import torch
 import torch.nn as nn
@@ -179,10 +180,16 @@ def neural_style_transfer_lbfgs(
 
         loss = optimizer.step(closure)
         clamp_normalized_(target)
-        """
+
+
         if step % 50 == 0 or step == 1:
+            if step == 1:
+                print("Starting NST optimization...")
+                start_time = time.time()
+            elif step % 200 == 0:
+                elapsed = time.time() - start_time
+                print(f"Step {step}/{steps} done. Elapsed time: {elapsed:.2f} seconds.")
             print(f"Step {step}/{steps} done.")
-        """
         #if step == 1 or step % save_every == 0 or step == steps:
         if step == steps:
             step_path = out_path.replace(".png", f"_step{step}.png")
@@ -248,4 +255,20 @@ def folder_nst():
             )
 
 if __name__ == "__main__":
-    folder_nst()
+    import time
+    start = time.time()
+    print("Starting NST folder processing...")
+    print("time:", time.time())
+    start = time.time()
+    neural_style_transfer_lbfgs(
+                content_path=data_dir + "content/processed/img_5.jpg",
+                style_path=data_dir + "style/processed/style_3.jpg",
+                out_path=output_dir + "poooppp.png",
+                steps=1200,
+                alpha=1.0,
+                beta=1e7,
+                save_every=1200
+            )
+    end = time.time()
+    print("NST completed in seconds:", end - start)
+    #folder_nst()
