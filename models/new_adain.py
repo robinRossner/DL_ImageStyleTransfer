@@ -177,12 +177,24 @@ if __name__ == "__main__":
 
 
 """
-for a in 0.2 0.4 0.5 0.6 0.8 1.0; do
+for a in 0.2 0.4 0.6 0.8 1.0; do
   python models/new_adain.py \
-    --content data/content/processed/img_5.jpg \
+    --content data/content/processed/img_7.jpg \
     --style data/style/processed/style_7.jpg \
-    --out out/adain_all/style7_img5_new_${a}.jpg \
+    --out out/style7_img7_new_${a}.jpg \
     --alpha ${a}
 done
-
 """
+#7, 19
+# 3, 4, 7
+"""
+python models/new_adain.py \
+    --content data/content/processed/img_14.jpg \
+    --style data/style/processed/style_9.jpg \
+    --out out/14x9.jpg \
+    --alpha 0.8
+"""
+
+#0 - 23
+#1 - 5
+#9 - 14
