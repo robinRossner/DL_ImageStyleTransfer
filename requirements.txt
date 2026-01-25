@@ -42,3 +42,13 @@ traitlets
 typing_extensions
 wcwidth
 pyyaml
+aiohttp
+datasets
+gdown
+importlib-metadata
+jaraco.collections
+matplotlib
+opencv-python
+pysocks
+tensorflow-hub
+tomli
