@@ -24,6 +24,9 @@ data_dir = config["paths"]["data_dir"]
 output_dir = config["paths"]["output_dir"]
 device_config = config["training"]["device"]
 
+# Pretrained AdaIN weights (see README for download links)
+WEIGHTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weights")
+
 
 def load_adain_image(path: str, device, size: int = 512) -> torch.Tensor:
     """Load and preprocess image for AdaIN stylization.
@@ -282,8 +285,8 @@ def folder_adain() -> None:
             out_path = output_dir + f"/adain_all/{name}_alpha_{alpha}.png"
 
             # Load model weights
-            v_weights = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/models/vgg_normalised.pth"
-            d_weights = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/models/decoder.pth"
+            v_weights = os.path.join(WEIGHTS_DIR, "vgg_normalised.pth")
+            d_weights = os.path.join(WEIGHTS_DIR, "decoder.pth")
             
             # Run stylization
             result = run_stylization(content_path, style_path, v_weights, d_weights, alpha, device_config)
@@ -315,8 +318,8 @@ if __name__ == "__main__":
         out_path = output_dir + f"/adain_ablation/{name}_alpha_0.8.png"
         
         # Load model weights
-        v_weights = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/models/vgg_normalised.pth"
-        d_weights = "/Users/robin/Desktop/Uni/2025W/Deep Learning/DL_ImageStyleTransfer/models/decoder.pth"
+        v_weights = os.path.join(WEIGHTS_DIR, "vgg_normalised.pth")
+        d_weights = os.path.join(WEIGHTS_DIR, "decoder.pth")
         
         result = run_stylization(content_img, style_path, v_weights, d_weights, 0.8, device)
         utils.save_image(result, out_path)

@@ -106,7 +106,7 @@ def main():
     ap.add_argument("--out", default="out.png")
     ap.add_argument("--alpha", type=float, default=1.0, help="style strength in [0,1]")
     ap.add_argument("--size", type=int, default=512, help="resize so max side <= size (0 disables)")
-    ap.add_argument("--models", default="models", help="where to store/load weights")
+    ap.add_argument("--models", default="models/weights", help="where to store/load weights")
     ap.add_argument("--cpu", action="store_true")
     ap.add_argument("--preserve_color", action="store_true")
     ap.add_argument("--adain_layer", type=int, default=4, choices=[3,4], help="3 = AdaIN at relu3_1 (often less crackly), 4 = relu4_1 (default)")
